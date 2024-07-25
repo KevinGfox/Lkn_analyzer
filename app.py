@@ -5,12 +5,17 @@ import numpy as np
 import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
+from wordcloud import WordCloud
+
+
+color_lab = ["#e2007d", "#852f85", "#4fb0ff", "#475297", "#FFFFFF", "#333333", "#0E3449", "#015955"]
+color_tech = ["#36A9E0", "#E5007D", "#144673", "#94C7EC", "#FFFFFF", "#333333", "#0E3449", "#015955"]
 
 Technopole_template = go.layout.Template(
-    layout_colorway=["#36A9E0", "#E5007D", "#144673", "#94C7EC", "#FFFFFF", "#333333", "#0E3449", "#015955"]
+    layout_colorway=color_tech
 )
 LABIA_template = go.layout.Template(
-    layout_colorway=["#e2007d", "#852f85", "#4fb0ff", "#475297", "#FFFFFF", "#333333", "#0E3449", "#015955"]
+    layout_colorway=color_lab
 )
 
 def month_transformer(month_number):
@@ -25,6 +30,8 @@ def day_of_week_transformer(day_number):
 
 custom_order = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 interact_list = ['Clics',"J’aime","Commentaires",'Republications']
+exclure_mots = ['d', 'du', 'de', 'la', 'des', 'le', 'et', 'est', 'elle', 'une', 'en', 'que', 'aux', 'qui', 'ces', 'les', 'dans', 'sur', 'l', 'un', 'pour', 'par', 'il', 'ou', 'à', 'ce', 'a', 'sont', 'cas', 'plus', 'leur', 'se', 'ses', 's', 'vous','son','sa', 'nos', 'au', 'c', 'aussi', 'toutes', 'autre', 'comme', 'avec','notre','cette', 'nous']
+
 
 def rate_months(feature,df):
     sum = df.groupby('mois')[feature].sum()
@@ -177,6 +184,8 @@ def POST():
         df['Date de création'] = pd.to_datetime(df['Date de création'])
         df['Interactions'] = df['Clics'] + df["J’aime"] + df["Commentaires"] + df['Republications']
         df_filtré = df[(df['annee'].isin(years)) & (df['mois'].isin(months))]
+        text_posts = ''.join([i for i in df['Titre du post']])
+        wordcloud = WordCloud(background_color = 'white', random_state=0, stopwords = exclure_mots, max_words = 50, margin=5).generate(text_posts)
         st.divider()
         col1, col2, col3, col4 = st.columns(4)
 
@@ -314,6 +323,19 @@ def POST():
             for i, medal in zip(Top3_liste[:3], medals):
                 st.write(f'{medal} {i}')
 
+        # WORDCLOUD
+        st.divider()
+        fig = px.imshow(wordcloud, template='temp', title='Wordcloud des posts')
+        fig.update_layout(autosize = True,
+                                title_x = 0.5,
+                                margin=dict(l=50,r=50,b=50,t=50,pad=4),
+                                xaxis_title = '',
+                                yaxis_title = '',
+                                yaxis = {'visible': True},
+                                template = 'plotly_dark'
+                                )
+        fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+        st.plotly_chart(fig)
 
 
 if __name__ == "__main__":
