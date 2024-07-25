@@ -150,7 +150,7 @@ def POST():
     st.divider()
     posts_file = st.file_uploader("Dépose ton fichier de posts ici")
     if posts_file is not None:
-        df = pd.read_excel(posts_file)
+        df = pd.read_csv(posts_file, delimiter=';', skiprows=0, low_memory=False)
         on = st.toggle("Selectionner toutes les années",value=False)
         if on:
             years = [2021, 2022, 2023, 2024, 2025]
