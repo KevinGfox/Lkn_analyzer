@@ -6,7 +6,9 @@ import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
 from wordcloud import WordCloud
+from utils import month_transformer, day_of_week_transformer, rate_months
 
+### VARIABLES & FUNCTIONS ###
 
 color_lab = ["#e2007d", "#852f85", "#4fb0ff", "#475297", "#FFFFFF", "#333333", "#0E3449", "#015955"]
 color_tech = ["#36A9E0", "#E5007D", "#144673", "#94C7EC", "#FFFFFF", "#333333", "#0E3449", "#015955"]
@@ -18,30 +20,12 @@ LABIA_template = go.layout.Template(
     layout_colorway=color_lab
 )
 
-def month_transformer(month_number):
-    months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-    return months[month_number - 1]
-
-
-def day_of_week_transformer(day_number):
-    days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-    return days[day_number]
-
-
-custom_order = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+months_order = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 interact_list = ['Clics',"J’aime","Commentaires",'Republications']
 exclure_mots = ['d', 'du', 'de', 'la', 'des', 'le', 'et', 'est', 'elle', 'une', 'en', 'que', 'aux', 'qui', 'ces', 'les', 'dans', 'sur', 'l', 'un', 'pour', 'par', 'il', 'ou', 'à', 'ce', 'a', 'sont', 'cas', 'plus', 'leur', 'se', 'ses', 's', 'vous','son','sa', 'nos', 'au', 'c', 'aussi', 'toutes', 'autre', 'comme', 'avec','notre','cette', 'nous']
 
 
-def rate_months(feature,df):
-    sum = df.groupby('mois')[feature].sum()
-    value = df.groupby('mois')[feature].sum().values[0]
-    month_1 = sum.loc[df.groupby('mois')[feature].sum().index[1]]
-    month_2 = sum.loc[df.groupby('mois')[feature].sum().index[0]]
-    rate = ((month_2 - month_1) / month_1) * 100
-    return value, rate
-
-# Set page configuration
+### PAGE CONFIGURATION ###
 st.set_page_config(
      page_title="Linkedin Report App",
      page_icon="📈",
@@ -99,15 +83,14 @@ def ABO():
                     )
         on2 = st.toggle("Selectionner tous les mois",value=True)
         if on2:
-            months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+            months = months_order
         else:
             months = st.multiselect(
                     "Sélectionner deux mois à comparer",
-                    ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],['Mai', 'Juin']
+                    months_order,['Mai', 'Juin']
                     )
     st.divider()
     if df2 is not None:
-        
         df2['annee'] = pd.DatetimeIndex(df2['Date']).year
         df2['mois'] = pd.DatetimeIndex(df2['Date']).month
         df2['jour'] = pd.DatetimeIndex(df2['Date']).day
@@ -117,10 +100,12 @@ def ABO():
         df2['Date'] = pd.to_datetime(df2['Date'])
         df2_filtré = df2[(df2['annee'].isin(years)) & (df2['mois'].isin(months))]
         df_cat_month = df2_filtré.copy()
-        df_cat_month['mois'] = pd.Categorical(df_cat_month['mois'], categories=custom_order, ordered=True)
+        df_cat_month['mois'] = pd.Categorical(df_cat_month['mois'], categories=months_order, ordered=True)
+
         if on2:
             abonnés_total = df2['Total d’abonnés'].sum()
             st.metric(label = "Abonnés Total:", value = abonnés_total)
+
         elif len(months) == 2:  
             abonnee_sum = df2_filtré.groupby('mois')['Total d’abonnés'].sum()
             abonnee_value = df2_filtré.groupby('mois')['Total d’abonnés'].sum().values[0]
@@ -129,8 +114,10 @@ def ABO():
             abonnés_stats = ((abonnee_month_2 - abonnee_month_1) / abonnee_month_1) * 100
 
             st.metric(label = "Abonnés", value = abonnee_value, delta = f'{abonnés_stats:.2f} %') 
+            
         else:
             st.warning('La comparaison se fait sur 2 mois.',icon="⚠️")
+
         fig = px.ecdf(df_cat_month, x="mois",
                    y="Total d’abonnés",
                    title = "Cumulé du nombre d'abonnée",
@@ -156,6 +143,7 @@ def POST():
     df = None
     st.divider()
     posts_file = st.file_uploader("Dépose ton fichier de posts ici")
+    
     if posts_file is not None:
         df = pd.read_csv(posts_file, delimiter=';', skiprows=0, low_memory=False, decimal=',')
         on = st.toggle("Selectionner toutes les années",value=False)
